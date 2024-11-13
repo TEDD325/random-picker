@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 import math
 
-PROBABILITY = 0.4
+PROBABILITY = 0.1
 
 def get_history_file(course_name):
     return f"selection_history_{course_name}.csv"
@@ -91,11 +91,12 @@ def pick_random_person(course_name):
     unique_selected_people = set(selected_people)
     available_people = [p for p in members if p not in unique_selected_people]
     
-    # 선택된 사람들도 0.5 확률로 다시 선택 가능하도록 가중치를 설정하여 전체 후보 리스트 생성
-    candidates = available_people + random.choices(list(unique_selected_people), k=int(PROBABILITY * len(unique_selected_people)))
+    # 가중치를 적용하여 후보 리스트 생성
+    candidates = available_people + list(unique_selected_people)
+    weights = [1.0] * len(available_people) + [PROBABILITY] * len(unique_selected_people)
     
-    # 랜덤 선택
-    selected = random.choice(candidates)
+    # 가중치를 적용하여 랜덤 선택
+    selected = random.choices(candidates, weights=weights, k=1)[0]
     save_history(course_name, members, selected)
     
     return selected, len(history) + 1, weeks_passed + 1
