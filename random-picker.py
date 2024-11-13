@@ -4,10 +4,11 @@ import os
 from datetime import datetime
 import math
 
-PROBABILITY = 0.1
+BASE_PATH = "/Users/dohk/Dropbox/codespace/code/Python/random-picker"  # 절대 경로 설정
 
 def get_history_file(course_name):
-    return f"selection_history_{course_name}.csv"
+    # 절대 경로를 기반으로 파일 경로 생성
+    return os.path.join(BASE_PATH, f"selection_history_{course_name}.csv")
 
 def load_history(course_name):
     history_file = get_history_file(course_name)
@@ -67,6 +68,22 @@ def initialize_members():
             members.append(name)
     return course_name, members
 
+def calculate_weights(members, history):
+    # 각 멤버의 선택 횟수를 계산
+    selection_counts = {member: 0 for member in members}
+    for _, selected_person in history:
+        if selected_person in selection_counts:
+            selection_counts[selected_person] += 1
+    
+    # 선택되지 않은 사람에게는 기본 가중치 1.0, 선택된 사람에게는 기하급수적으로 감소하는 가중치 부여
+    weights = []
+    for member in members:
+        count = selection_counts[member]
+        weight = 1.0 if count == 0 else (0.5 ** count)  # 선택될 때마다 0.5의 비율로 가중치 감소
+        weights.append(weight)
+    
+    return weights
+
 def pick_random_person(course_name):
     members, history, initial_time = load_history(course_name)
     
@@ -86,17 +103,9 @@ def pick_random_person(course_name):
         reset_history(course_name, keep_members=True)
         history = []
     
-    # 이미 선택된 사람들 확인
-    selected_people = [row[1] for row in history]
-    unique_selected_people = set(selected_people)
-    available_people = [p for p in members if p not in unique_selected_people]
-    
-    # 가중치를 적용하여 후보 리스트 생성
-    candidates = available_people + list(unique_selected_people)
-    weights = [1.0] * len(available_people) + [PROBABILITY] * len(unique_selected_people)
-    
-    # 가중치를 적용하여 랜덤 선택
-    selected = random.choices(candidates, weights=weights, k=1)[0]
+    # 가중치를 계산하여 랜덤 선택
+    weights = calculate_weights(members, history)
+    selected = random.choices(members, weights=weights, k=1)[0]
     save_history(course_name, members, selected)
     
     return selected, len(history) + 1, weeks_passed + 1
