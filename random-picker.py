@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 import math
 
-BASE_PATH = "/Users/dohk/Dropbox/codespace/code/Python/random-picker"  # 절대 경로 설정
+BASE_PATH = "/Users/dohk/Dropbox/developer/code/Python/random-picker"  # 절대 경로 설정
 
 def get_history_file(course_name):
     # 절대 경로를 기반으로 파일 경로 생성
@@ -58,7 +58,7 @@ def get_weeks_passed(history, initial_time):
 
 def initialize_members():
     course_name = input("과정명을 입력하세요: ").strip()
-    print("\n멤버 초기화를 시작합니다.")
+    print("\n멤버 초기화를 시작한다.")
     members = []
     while True:
         name = input("멤버 이름을 입력하세요 (입력 완료시 엔터 두 번): ").strip()
@@ -84,6 +84,15 @@ def calculate_weights(members, history):
     
     return weights
 
+def get_already_selected_today(history):
+    # 오늘 날짜에 이미 선택된 멤버 목록을 반환
+    today = datetime.now().strftime('%Y-%m-%d')
+    selected_today = []
+    for time_str, person in history:
+        if time_str.startswith(today):
+            selected_today.append(person)
+    return set(selected_today)
+
 def pick_random_person(course_name):
     members, history, initial_time = load_history(course_name)
     
@@ -91,7 +100,7 @@ def pick_random_person(course_name):
     if not members:
         course_name, members = initialize_members()
         if not members:
-            print("멤버가 입력되지 않았습니다.")
+            print("멤버가 입력되지 않았다.")
             return None
         initial_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         save_history(course_name, members, "", is_first_run=True, initial_time=initial_time)
@@ -99,13 +108,23 @@ def pick_random_person(course_name):
     # 주차 확인 및 리셋
     weeks_passed = get_weeks_passed(history, initial_time)
     if weeks_passed >= len(members) and history:
-        print(f"\n{len(members)}주가 지나 기록을 리셋합니다.")
+        print(f"\n{len(members)}주가 지나 기록을 리셋한다.")
         reset_history(course_name, keep_members=True)
         history = []
     
+    # 오늘 이미 선택된 멤버 제외
+    selected_today = get_already_selected_today(history)
+    available_members = [m for m in members if m not in selected_today]
+
+    if not available_members:
+        print("오늘 모든 멤버가 이미 선택되었다.")
+        return None, None, weeks_passed + 1
+
     # 가중치를 계산하여 랜덤 선택
     weights = calculate_weights(members, history)
-    selected = random.choices(members, weights=weights, k=1)[0]
+    # available_members만 추출한 뒤, 해당 멤버의 가중치만 추출
+    member_weights = [weights[members.index(m)] for m in available_members]
+    selected = random.choices(available_members, weights=member_weights, k=1)[0]
     save_history(course_name, members, selected)
     
     return selected, len(history) + 1, weeks_passed + 1
@@ -116,7 +135,7 @@ def main():
     
     if selected_person:
         print(f"\n[과정: {course_name}, Week {current_week}] 선택된 사람: {selected_person}")
-        print(f"이번 주차의 {selection_count}번째 선택입니다.")
+        print(f"이번 주차의 {selection_count}번째 선택이다.")
 
 if __name__ == "__main__":
     main()
